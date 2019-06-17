@@ -1,4 +1,4 @@
-## Setup
+## Deploy grafana and influxdb
 
 Below we describe in details how to:
 
@@ -8,27 +8,26 @@ Below we describe in details how to:
 
 *If you plan to use Grafana monitoring for your product feel free to copy this repository to your project and change variables as needed.*
 
-### Prerequisites
+### Requirements
+
+Deployment to remote server is done using [Ansible](https://www.ansible.com/) - a simple automation tool. Deployment was tested on a brand new Digital Ocean Ubuntu 16.04 server. Some changes might required to run other linux distributives. Deployment steps includes:
+
+1. Docker installation
+2. Installation of [Grafana](https://github.com/grafana/grafana), [InfluxDb](https://github.com/influxdata/influxdb) and [Telegraf](https://github.com/influxdata/telegraf)
+3. Running Grafana, InfluxDb, Telegraf inside Docker containers
+
+### Prerequisites:
 
 1. [Ansible](http://docs.ansible.com/ansible/intro_installation.html)
 2. Ubuntu 16.04 server & ssh access to that server
 
-### Deploy to production
+## Installation steps
 
-❕ deploment tested on the latest [DigitalOcean](https://www.digitalocean.com/) Ubuntu dropet. me changes might required to run other linux distributives.
+For Grafana installation [paralect.grafana](https://galaxy.ansible.com/paralect/grafana/) Ansible role is used.
 
-High level deployment steps:
-1. Docker installation
-2. Nginx proxy installation & configuration to work with Grafana
-3. [PostgreSQL](https://www.postgresql.org/) installation for Grafana to persist information
-4. [InflexDB](https://www.influxdata.com/) installation to persist information from telegraf
-5. Running Grafana inside Docker containers
-6. Optional configuration of SSL certificate
-
-Prepare for deployment:
 1. Update hosts file
   - ```monitoring``` is ip of the server where you are planing to deploy grafana
-  - ```server``` is ip of server where you application is located, used with telegraf
+  - ```server``` is ip of server where yoy are planning to deploy telegraf. If you don't need System (CPU, Disk, etc.), Database, Docker metrics, but you only need HTTP response metrics then specify the same ip as for monitoring
 2. Install Ansible role dependencies with one command: `./bin/install-ansible-dependencies.sh`
 3. Rename `credentials-template.yml` into `credentials.yml` and update the following variables:
   - `gf_admin_user` - username for admin user. You need it to login to the grafana.
@@ -55,10 +54,22 @@ Prepare for deployment:
     * tcp://localhost:6379
     * tcp://:password@192.168.99.100
     * unix:///var/run/redis.sock
+5. To change the address of the server which should be used for HTTP response metrics change the `config/telegraf/telegraf.conf.j2` file (line 936):
+<pre>
+[[inputs.http_response]]
+  ## Server address (default http://localhost)
+  <b>address = "http://github.com"</b>
+  ## Set response_timeout (default 5 seconds)
+  response_timeout = "5s"
+  ## HTTP Request Method
+  method = "GET"
+  ## Whether to follow redirects from the server (defaults to false)
+  follow_redirects = true
+</pre>
 
 Once you done all above, run the following command:
 ```
-./bin/setup-server.sh && ./bin/deploy-influxdb.sh && ./bin/deploy-grafana.sh ./bin/deploy-nginx.sh
+./bin/setup-server.sh && ./bin/deploy-influxdb.sh && ./bin/deploy-grafana.sh && ./bin/deploy-nginx.sh
 ```
 
 ### Setting up Telegraf to collect data
